@@ -38,9 +38,12 @@ N_REPEATS = 10                 # random restarts for k-means / k-medoids
 K_RANGE = list(range(2, 11))   # k = 2..10
 K_CHOSEN = 3                   # final k (justified in section 4E)
 TIE_TOLERANCE = 0.02           # silhouette gap treated as a tie in section 4D
+DROP_DUPLICATES = False        # True removes duplicate rows before clustering
 FEATURES = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
 
-SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "1") == "1"
+# False (default): figures are only saved to the outputs/ folder and the script never pauses.
+# True: each figure opens in a window and the script WAITS until you close it.
+SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "0") == "1"
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
 os.makedirs(OUT_DIR, exist_ok=True)
 np.random.seed(RANDOM_STATE)
@@ -57,6 +60,7 @@ def save_fig(name, fig=None):
     fig = fig or plt.gcf()
     fig.tight_layout()
     fig.savefig(os.path.join(OUT_DIR, name), dpi=150, bbox_inches="tight")
+    print(f"  [figure saved: outputs/{name}]")
     if SHOW_PLOTS:
         plt.show()
     plt.close(fig)
@@ -116,12 +120,22 @@ def data_quality(df):
     print("Shape:", df.shape)
     print("\nData types:\n", df.dtypes)
     print("\nMissing values per column:\n", df.isnull().sum())
+    if df.isnull().any().any():
+        df = df.dropna().reset_index(drop=True)
+        print(f"Rows with missing values removed; {len(df)} rows remain")
+    else:
+        print("No missing values: nothing to remove")
     n_dup = df.duplicated().sum()
     print(f"\nDuplicate rows: {n_dup}")
     if n_dup:
         print(df[df.duplicated(keep=False)].sort_values(FEATURES))
-        print("(kept: duplicates are real measurements, and clustering is not harmed by them)")
+        if DROP_DUPLICATES:
+            df = df.drop_duplicates().reset_index(drop=True)
+            print(f"Duplicate rows removed; {len(df)} rows remain")
+        else:
+            print("(kept: DROP_DUPLICATES is False; duplicates are real measurements)")
     print("\nClass balance:\n", df["species"].value_counts())
+    return df
 
 
 # ==============================================================
@@ -177,7 +191,7 @@ def eda(df):
     # c. relationships ----------------------------------------------------------
     print("\n[c] Relationships between features")
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    for ax, method in zip(axes, ["pearson", "spearman"]):
+    for ax, method in zip(axes, ["pearson", "spearman"], strict=True):
         corr = df[FEATURES].corr(method=method)
         sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", vmin=-1, vmax=1, ax=ax)
         ax.set_title(f"{method.capitalize()} correlation")
@@ -423,7 +437,7 @@ def run_hierarchical(X_scaled):
     # heatmaps
     fig, axes = plt.subplots(1, 2, figsize=(18, 5))
     for ax, col, title in zip(axes, ["sil_euclid", "sil_own"],
-                              ["Silhouette (Euclidean ruler)", "Silhouette (own metric)"]):
+                              ["Silhouette (Euclidean ruler)", "Silhouette (own metric)"], strict=True):
         pv = hier.pivot(index="config", columns="k", values=col)
         sns.heatmap(pv, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax)
         ax.set_title(f"Hierarchical: {title}")
@@ -449,7 +463,7 @@ def run_hierarchical(X_scaled):
 
     # dendrograms
     fig, axes = plt.subplots(1, 3, figsize=(21, 6))
-    for ax, (mname, link) in zip(axes, best_cfg.items()):
+    for ax, (mname, link) in zip(axes, best_cfg.items(), strict=False):
         Z = Zs[(mname, link)]
         cut = (Z[-(K_CHOSEN - 1), 2] + Z[-K_CHOSEN, 2]) / 2
         dendrogram(Z, truncate_mode="lastp", p=30, leaf_rotation=45, leaf_font_size=9,
@@ -563,17 +577,16 @@ def external_check(df, candidates):
     rows, crosstabs = [], {}
     for name, c in candidates.items():
         labels = np.asarray(c["labels"])
-        clusters = np.unique(labels)
         ct = pd.crosstab(pd.Series(labels, name="cluster"), df["species"])[species]
         crosstabs[name] = ct
         # one-to-one cluster -> species mapping that maximises correct flowers (Hungarian method)
         r, col = linear_sum_assignment(-ct.values)
-        mapping = {ct.index[i]: species[j] for i, j in zip(r, col)}
-        correct = sum(ct.values[i, j] for i, j in zip(r, col))
+        mapping = {ct.index[i]: species[j] for i, j in zip(r, col, strict=True)}
+        correct = sum(ct.values[i, j] for i, j in zip(r, col, strict=True))
         row = {"model": name, "matched_accuracy": correct / len(df),
                "ARI": adjusted_rand_score(truth, labels)}
         for j, s in enumerate(species):
-            hit = [ct.values[i, jj] for i, jj in zip(r, col) if jj == j]
+            hit = [ct.values[i, jj] for i, jj in zip(r, col, strict=True) if jj == j]
             row[f"recall_{s}"] = (hit[0] / ct[s].sum()) if hit else 0.0
         row["mapping"] = str(mapping)
         rows.append(row)
@@ -596,7 +609,7 @@ def cluster_plot(df, X_scaled, candidates, winner):
     panels = [(n, c["labels"]) for n, c in candidates.items()]
     panels.append(("Ground truth (species)", pd.factorize(df["species"])[0]))
     fig, axes = plt.subplots(2, 4, figsize=(22, 10))
-    for ax, (title, labels) in zip(axes.ravel(), panels):
+    for ax, (title, labels) in zip(axes.ravel(), panels, strict=False):
         ax.scatter(X2[:, 0], X2[:, 1], c=labels, cmap="Set1", s=35, edgecolor="k", linewidth=0.3)
         ax.set_title(title + ("  [WINNER]" if title == winner else ""),
                      fontweight="bold" if title == winner else "normal")
@@ -647,7 +660,7 @@ def save_outputs(df, candidates, part, hier, cand_table, evidence, ext, crosstab
 def main():
     global X_SCALED_GLOBAL
     df = load_data()
-    data_quality(df)
+    df = data_quality(df)
     eda(df)
 
     banner("3.3  SCALING")
