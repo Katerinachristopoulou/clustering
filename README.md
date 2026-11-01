@@ -402,7 +402,7 @@ Internal validation judges a clustering using only the data, without the species
 
 **Silhouette score.** For every flower $i$, let $a(i)$ be its mean distance to the other flowers of its own cluster, and $b(i)$ its mean distance to the flowers of the nearest other cluster:
 
-$$s(i) = \frac{b(i)-a(i)}{\max\{a(i),\,b(i)\}} \qquad S = \frac{1}{N}\sum_{i=1}^{N}s(i)$$
+$$s(i) = \frac{b(i)-a(i)}{\max\lbrace a(i),\ b(i)\rbrace} \qquad S = \frac{1}{N}\sum_{i=1}^{N}s(i)$$
 
 $S$ lies between $-1$ and $1$. A high value means the flowers are close to their own cluster and far from the others. A value near 0 means the clusters overlap, and a negative value means flowers are probably in the wrong cluster. If a cut gives fewer than two clusters, the score is not defined and is stored as empty.
 
