@@ -4,12 +4,12 @@
 
 The goal of this project was to group 150 iris flowers without using their species labels, in order to find their natural groupings. I compared k-means and hierarchical clustering. The question answered was which method, which distance metric and which number of clusters is optimal for this dataset.
 
-Methods and distance metrics were compared with the silhouette score and the elbow method, and the species labels were used only afterwards to check how well the clusters match the real species.
+The number of clusters was chosen mainly with the elbow method, and the methods and distance metrics were compared with the silhouette score. The species labels were used only afterwards to check how well the clusters match the real species.
 
 **Main results.**
 
 * The internal winner at $k = 3$ is `HC-Euclidean-average` (hierarchical clustering, Euclidean distance, average linkage), with a Euclidean silhouette of 0.480.
-* The silhouette is highest at $k = 2$ for every model with the Euclidean ruler. $k = 3$ was chosen because the dataset has three species (see 7.6).
+* $k = 3$ was chosen with the elbow method (the second-difference elbow gives $k = 3$ for all three partitioning variants) and because the dataset has three species. The silhouette alone would prefer $k = 2$ (see 7.6).
 * Against the real species, the winner reaches a matched accuracy of 0.687 and an ARI of 0.562, because one of its three clusters holds only 3 flowers. The best external match is `HC-Manhattan-average`, with an accuracy of 0.887 and an ARI of 0.718. The winner was not changed after seeing the labels (see 7.7).
 
 ## 2. Files and outputs
@@ -36,7 +36,7 @@ Methods and distance metrics were compared with the silhouette score and the elb
 * `iris_with_clusters.csv`: the dataset with the cluster of each flower added as new columns, one for each finalist (for example `KM-Euclid_k3`).
 * `iris_clustering_results.xlsx`: three sheets.
   * `Data + Clusters`: the same data as the csv file, the dataset with its final clustering.
-  * `Internal validation`: the comparison of the elbow and silhouette results used to choose the method and the number of clusters.
+  * `Internal validation`: the elbow and silhouette results used to choose the number of clusters and the method.
   * `External check`: the comparison of the clusters with the real species using accuracy and ARI (formulas below).
 
 ### Formulas used in the external check
@@ -294,7 +294,10 @@ The variance of petal length is about 16 times that of sepal width, so without s
 
 ## 7. Methodology
 
-The analysis compares two families of methods: partitioning methods (k-means and its variants) and hierarchical clustering. Each family is run with three distance metrics: Euclidean, Manhattan and cosine. Every method is tried for $k = 2$ to $10$ clusters. The methods are chosen with internal measures (the elbow and the silhouette score), which do not use the species labels. The number of clusters is chosen with the same measures together with what is known about the data (see 7.6). The species labels are used only at the end, to check the result.
+The analysis compares two families of methods: partitioning methods (k-means and its variants) and hierarchical clustering. Each family is run with three distance metrics: Euclidean, Manhattan and cosine. Every method is tried for $k = 2$ to $10$ clusters. Two internal measures are used, and neither uses the species labels. Each has its own role:
+
+* **The elbow method chooses the number of clusters.** It reads the cost curve of each model on its own, so it can say which $k$ suits a model, but it cannot compare models with each other (see 7.4). Together with what is known about the data, it is the main basis for $k$ (see 7.6).
+* **The silhouette score chooses the method and the metric.** With the Euclidean ruler it puts every model on the same scale, so the six finalists can be ranked (see 7.5). It is also reported for every $k$ as a second opinion on the number of clusters. The species labels are used only at the end, to check the result.
 
 ### 7.1 Scaling
 
@@ -405,7 +408,7 @@ $S$ lies between $-1$ and $1$. A high value means the flowers are close to their
 
 **Own metric and Euclidean ruler.** Every model gets two silhouette scores. The first (`sil_own`) is computed with the model's own distance, so a cosine model is judged with cosine distance. The second (`sil_euclid`) is computed for every model with the Euclidean distance on the scaled data. Scores based on different distances are on different scales, so only the Euclidean ruler can be used to compare models with each other. The own-metric score is reported as extra information. Because the Euclidean ruler is not neutral for models that use another distance, both scores are kept.
 
-**Elbow method.** The cost of a partitioning method always falls when $k$ grows, because more clusters fit the data more closely. The elbow is the value of $k$ after which adding clusters brings little improvement. The costs of the three variants are in different units, so each curve is read on its own. The script finds the elbow in three ways:
+**Elbow method.** The cost of a partitioning method always falls when $k$ grows, because more clusters fit the data more closely. The elbow is the value of $k$ after which adding clusters brings little improvement. The costs of the three variants are in different units, so each curve is read on its own. This is why the elbow is used to choose $k$ for each model, but not to compare models: a cost of 140 for k-means and 208 for k-medoids cannot be compared. The script finds the elbow in three ways:
 
 * **Kneedle (`knee_point`).** The values of $k$ and the cost are rescaled to the range 0 to 1, giving $k_n$ and $c_n$. The elbow is the $k$ with the largest value of
 
@@ -465,11 +468,11 @@ The table is printed and saved in the sheet `Internal validation` of the Excel f
 
 The evidence table is in 8.2.
 
-**Justification of the number of clusters.** The optimal $k$ from the analysis was 2, but it was changed to 3 because the dataset has three species. The internal measures and the chosen $k$ therefore do not point to the same value, and this is stated openly.
+**Justification of the number of clusters.** The silhouette pointed to $k = 2$, but $k = 3$ was chosen, based on the elbow method and the fact that the dataset has three species. The silhouette and the chosen $k$ therefore do not point to the same value, and this is stated openly.
 
-* **$k = 2$ is the statistically best choice.** The Euclidean silhouette is highest at $k = 2$ for all six models, and the own-metric silhouette for five of the six (see the evidence table). For `KM-Euclid` the silhouette falls from 0.580 at $k = 2$ to 0.459 at $k = 3$. Setosa is clearly separated from the other two species, while versicolor and virginica overlap. If the choice were based only on the internal measures, and on fairness to them, $k = 2$ would be selected.
-* **$k = 3$ was chosen to match the natural grouping of the data**, which is the three species. It is also a well-performing choice: the second-difference elbow points to $k = 3$ for all three partitioning variants. In a real situation the best statistical value is not the only thing that matters. A good choice that describes the groups in a more useful way can be preferred, and $k = 3$ also tries to separate versicolor from virginica, which $k = 2$ cannot do.
-* **This choice uses prior knowledge.** The number of species (3) is known domain knowledge, and it is the reason $k = 3$ was preferred over the statistically best $k = 2$. The species of the individual flowers are not used. The consequence is that the results at $k = 3$ must be read with the overlap of versicolor and virginica in mind, which is visible in the accuracy and in the cross-tables of 7.7.
+* **$k = 2$ is the best choice by the silhouette.** The Euclidean silhouette is highest at $k = 2$ for all six models, and the own-metric silhouette for five of the six (see the evidence table). For `KM-Euclid` the silhouette falls from 0.580 at $k = 2$ to 0.459 at $k = 3$. Setosa is clearly separated from the other two species, while versicolor and virginica overlap. The merge-height jump, the elbow equivalent for hierarchical clustering, also points to $k = 2$ for the three hierarchical finalists. If the choice were based only on the silhouette, $k = 2$ would be selected.
+* **$k = 3$ was chosen with the elbow method and to match the natural grouping of the data**, which is the three species. The second-difference elbow points to $k = 3$ for all three partitioning variants. Kneedle points higher ($k = 4$ or $5$), so no partitioning elbow supports $k = 2$. In a real situation the best statistical value is not the only thing that matters. A good choice that describes the groups in a more useful way can be preferred, and $k = 3$ also tries to separate versicolor from virginica, which $k = 2$ cannot do.
+* **This choice uses prior knowledge.** The number of species (3) is known domain knowledge, and together with the partitioning elbows it is the reason $k = 3$ was preferred over the $k = 2$ favoured by the silhouette. The species of the individual flowers are not used. The consequence is that the results at $k = 3$ must be read with the overlap of versicolor and virginica in mind, which is visible in the accuracy and in the cross-tables of 7.7.
 
 ### 7.7 External check (`external_check`)
 
@@ -566,7 +569,7 @@ Tie band: 0.460 to 0.480 (`TIE_TOLERANCE` = 0.02).
 | Euclidean silhouette at $k = 3$ | 0.480 |
 | Cluster sizes | 50, 97, 3 |
 
-*Reasoning to be written together: why this method was chosen by the decision rule (7.5), and why $k = 3$ was chosen over the statistically best $k = 2$ (7.6).*
+*Reasoning to be written together: why this method was chosen by the decision rule (7.5), and why $k = 3$ was chosen with the elbow method over the $k = 2$ favoured by the silhouette (7.6).*
 
 ### 8.4 Accuracy and ARI of the chosen model
 
@@ -576,3 +579,39 @@ Tie band: 0.460 to 0.480 (`TIE_TOLERANCE` = 0.02).
 | `HC-Manhattan-average` (highest accuracy, for reference) | 0.887 | 0.718 | 1.00 | 0.98 | 0.68 |
 
 *Conclusion to be written together: how well the chosen model matches the real species, why its accuracy is lower than that of other models, and what this says about choosing a model with the silhouette alone.*
+
+## 9. Limitations and notes
+
+* **The silhouette favours $k = 2$ on iris.** Setosa is far from the other two species, while versicolor and virginica overlap. The silhouette therefore scores the split into setosa and the rest highest, and with the Euclidean ruler every model has its best score at $k = 2$. A method chosen by the silhouette at $k = 3$ can still be weak at separating versicolor from virginica, as the chosen model shows (see 8.4).
+* **The Euclidean ruler is not neutral for other metrics.** All models are compared with the Euclidean silhouette, so that the scores are on the same scale. But a model that was built with Manhattan or cosine distance is then judged with a distance it did not optimise, which gives an advantage to the Euclidean models. The own-metric scores are reported for this reason, but they cannot be compared across metrics.
+* **Matched accuracy is only meaningful at $k = 3$.** The matching of clusters to species is one-to-one. With fewer clusters than species, some species get no cluster and a recall of 0. With more clusters, some clusters are left out of the count. So the external check is run only at $k = 3$, the number of species. The ARI does not have this problem.
+* **The hand-written k-medoids is simple, not optimal.** It alternates between assigning flowers and updating medoids, and it can end in a local optimum. Better algorithms exist, such as PAM in the `scikit-learn-extra` package. The simple version was used to avoid an extra package, and the 10 restarts reduce the risk of a poor result.
+
+## 10. Reproducibility
+
+The analysis is made reproducible so that every run gives the same numbers, and the results in this README can be checked by running the script again.
+
+* **Seeds.** `RANDOM_STATE = 42` sets the seed of NumPy, k-means, the hand-written k-medoids and PCA. The stability check uses the seeds 42 to 51 (`RANDOM_STATE + r`). Hierarchical clustering has no random step. With fixed seeds, every run on the same data and package versions gives the same numbers.
+* **Data.** The numbers in this README come from the Kaggle copy of the data. The scikit-learn copy, used only if the download fails, may differ in a few values, so the results could differ slightly. The script prints which source it used.
+* **Package versions.** The results were produced with:
+
+| Package | Version |
+| --- | --- |
+| Python | 3.13.1 |
+| pandas | 3.1.0 |
+| numpy | 2.5.4 |
+| scipy | 1.18.1 |
+| scikit-learn | 1.9.1 |
+| matplotlib | 3.11.2 |
+| seaborn | 0.13.2 |
+| openpyxl | 3.1.5 |
+| kagglehub | 1.0.3 |
+
+`requirements.txt` does not pin these versions, so a fresh install may get newer ones. To get exactly the same environment, install these versions, for example `pip install scikit-learn==1.9.1`.
+
+## 11. References
+
+* Fisher, R. A. (1936). The use of multiple measurements in taxonomic problems. *Annals of Eugenics*, 7(2), 179–188.
+* Iris flower dataset on Kaggle (`arshid/iris-flower-dataset`): https://www.kaggle.com/datasets/arshid/iris-flower-dataset
+* Pedregosa, F. et al. (2011). Scikit-learn: Machine learning in Python. *Journal of Machine Learning Research*, 12, 2825–2830.
+* Virtanen, P. et al. (2020). SciPy 1.0: Fundamental algorithms for scientific computing in Python. *Nature Methods*, 17, 261–272.
