@@ -464,7 +464,7 @@ The number of clusters is set by `K_CHOSEN` (3). The function `choose_k` builds 
 * `elbow_k_2nd_diff`: the elbow by the second difference (partitioning variants only).
 * `best_k_silhouette_own` and `best_k_silhouette_euclid`: the $k$ with the highest silhouette, with the model's own metric and with the Euclidean ruler.
 
-The table is printed and saved in the sheet `Internal validation` of the Excel file. The script then prints a checkpoint, and the decision is written below.
+The table is printed and saved in the sheet `Internal validation` of the Excel file. The script then points to this section, where the decision is written below.
 
 The evidence table is in 8.2.
 
@@ -530,7 +530,7 @@ If the internal winner is not the model with the best accuracy, this is reported
 
 ## 8. Results
 
-This section brings together the main results. The tables are filled with the numbers from the run described in section 4. The conclusions are placeholders, to be written together after reviewing the tables.
+This section brings together the main results, with the numbers from the run described in section 4.
 
 ### 8.1 Candidate comparison at $k = 3$
 
@@ -545,7 +545,7 @@ This section brings together the main results. The tables are filled with the nu
 
 Tie band: 0.460 to 0.480 (`TIE_TOLERANCE` = 0.02).
 
-*Conclusion to be written together: which method and metric perform best by the Euclidean ruler, how large the differences between the six models are, and what the own-metric scores add.*
+By the Euclidean ruler, `HC-Euclidean-average` scores highest (0.480), and it is the only model in the tie band. `KM-Euclid` misses the band by 0.0005. The Euclidean models score best in both families, which is partly expected, because the ruler itself is Euclidean (see section 9). The differences are small: all six models lie between 0.429 and 0.480, so no method or metric is clearly better than the others. The own-metric scores of the cosine models (0.72 and 0.74) are high, but they use a different scale and cannot be compared with the rest.
 
 ### 8.2 Evidence table for $k$
 
@@ -558,7 +558,7 @@ Tie band: 0.460 to 0.480 (`TIE_TOLERANCE` = 0.02).
 | `HC-Manhattan-average` | 2 | | 2 | 2 |
 | `HC-Cosine-average` | 2 | | 2 | 2 |
 
-*Conclusion to be written together: what the elbows and the silhouette say about $k$, and where they disagree.*
+The silhouette points to $k = 2$: it is the best $k$ for all six models with the Euclidean ruler, and for five of six with their own metric. The elbows are mixed. For the partitioning variants the second difference gives $k = 3$ for all three, and kneedle gives 4 or 5, so no partitioning elbow points to $k = 2$. For the hierarchical models the merge-height jump gives $k = 2$. The measures agree that setosa is a clearly separate group, and disagree on whether versicolor and virginica should be split.
 
 ### 8.3 Final method and $k$
 
@@ -569,7 +569,7 @@ Tie band: 0.460 to 0.480 (`TIE_TOLERANCE` = 0.02).
 | Euclidean silhouette at $k = 3$ | 0.480 |
 | Cluster sizes | 50, 97, 3 |
 
-*Reasoning to be written together: why this method was chosen by the decision rule (7.5), and why $k = 3$ was chosen with the elbow method over the $k = 2$ favoured by the silhouette (7.6).*
+The method was chosen by the decision rule fixed in advance (7.5). `HC-Euclidean-average` has the highest Euclidean silhouette and no other model is within 0.02 of it, so the simplicity rule did not need to be applied. The number of clusters, $k = 3$, was chosen with the elbow method (the second-difference elbow of all three partitioning variants) and the fact that the dataset has three species, over the $k = 2$ favoured by the silhouette (7.6). The weak point of the choice is the cluster sizes: one of the three clusters holds only 3 flowers, so the chosen model is close to the $k = 2$ solution.
 
 ### 8.4 Accuracy and ARI of the chosen model
 
@@ -578,7 +578,9 @@ Tie band: 0.460 to 0.480 (`TIE_TOLERANCE` = 0.02).
 | `HC-Euclidean-average` (chosen) | 0.687 | 0.562 | 1.00 | 1.00 | 0.06 |
 | `HC-Manhattan-average` (highest accuracy, for reference) | 0.887 | 0.718 | 1.00 | 0.98 | 0.68 |
 
-*Conclusion to be written together: how well the chosen model matches the real species, why its accuracy is lower than that of other models, and what this says about choosing a model with the silhouette alone.*
+The chosen model matches the species only partly: accuracy 0.687 and ARI 0.562, the lowest of the six models. It finds setosa perfectly and puts all versicolor in one cluster, but it places 47 of the 50 virginica flowers in the same cluster as versicolor, so the recall of virginica is only 0.06. Its third cluster holds only 3 virginica flowers. `HC-Manhattan-average` matches the species best (accuracy 0.887, ARI 0.718), followed by `KM-Manhat` (0.880, 0.702). Following the rule fixed in advance, the winner is not switched.
+
+This shows the limit of choosing a model with the silhouette alone. The silhouette rewards the clean separation of setosa and does not penalise a very small cluster, so the model with the best silhouette is not the one that best recovers the three species. On data where two of the groups overlap, the silhouette should be read together with the cluster sizes.
 
 ## 9. Limitations and notes
 
@@ -607,7 +609,7 @@ The analysis is made reproducible so that every run gives the same numbers, and 
 | openpyxl | 3.1.5 |
 | kagglehub | 1.0.3 |
 
-`requirements.txt` does not pin these versions, so a fresh install may get newer ones. To get exactly the same environment, install these versions, for example `pip install scikit-learn==1.9.1`.
+`requirements.txt` pins these versions, so `pip install -r requirements.txt` installs the same environment.
 
 ## 11. References
 

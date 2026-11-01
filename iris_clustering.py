@@ -266,7 +266,7 @@ def eda(df):
     print("highest-variance feature from dominating every distance calculation.")
 
     # g. summary: deliberately NOT auto-written ---------------------------------
-    print("\n[g] EDA SUMMARY: CHECKPOINT. Conclusions to be written together after reviewing the output above.")
+    print("\n[g] EDA SUMMARY: see section 6.7 of README.md.")
 
 
 # ==============================================================
@@ -562,8 +562,7 @@ def choose_k(part, hier, knees, knees2, gap_k, best_cfg):
     ev = pd.DataFrame(rows)
     print(ev.to_string(index=False))
     print(f"\nChosen k = {K_CHOSEN}.")
-    print("CHECKPOINT: the written justification (k=2 vs k=3) is to be agreed together,")
-    print("using this table, the dendrograms, the merge-height plot and the EDA/PCA view.")
+    print("Justification of k = 3 over k = 2: see section 7.6 of README.md.")
     return ev
 
 
